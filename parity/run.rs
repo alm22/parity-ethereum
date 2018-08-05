@@ -19,8 +19,6 @@ use std::sync::{Arc, Weak};
 use std::time::{Duration, Instant};
 use std::thread;
 
-use std::net::ToSocketAddrs;
-
 use ansi_term::Colour;
 use bytes::Bytes;
 use ethcore::account_provider::{AccountProvider, AccountProviderSettings};
@@ -67,8 +65,8 @@ use secretstore;
 use signer;
 use db;
 use ethkey::Password;
-
-use hydrabadger::Hydrabadger;
+use hbbft::HbbftConfig;
+use hydrabadger::{Hydrabadger, Config as HydrabadgerConfig};
 
 // how often to take periodic snapshots.
 const SNAPSHOT_PERIOD: u64 = 5000;
@@ -132,6 +130,7 @@ pub struct RunCmd {
 	pub no_persistent_txqueue: bool,
 	pub whisper: ::whisper::Config,
 	pub no_hardcoded_sync: bool,
+	pub hbbft: HbbftConfig,
 }
 
 // node info fetcher for the local store.
@@ -472,13 +471,18 @@ fn execute_impl<Cr, Rr>(cmd: RunCmd, logger: Arc<RotatingLogger>, on_client_rq: 
 	// spin up event loop
 	let event_loop = EventLoop::spawn();
 
-	let hdb_bind_address = "localhost:6000"
-        .to_socket_addrs()
-        .expect("Invalid bind address")
-        .next().unwrap();
+	// Hydrabadger/hbbft configuration:
+ 	let hdb_config = HydrabadgerConfig {
+	    batch_size: cmd.hbbft.batch_size,
+	    txn_gen_count: cmd.hbbft.txn_gen_count,
+	    txn_gen_interval: cmd.hbbft.txn_gen_interval,
+	    txn_gen_bytes: cmd.hbbft.txn_gen_bytes,
+	    keygen_peer_count: cmd.hbbft.keygen_peer_count,
+	    output_extra_delay_ms: cmd.hbbft.output_extra_delay_ms,
+	};
 
-	// Hydrabadger
-	let hdb = Hydrabadger::with_defaults(hdb_bind_address);
+	// Hydrabadger node:
+	let _hdb = Hydrabadger::new(cmd.hbbft.bind_address, hdb_config);
 
 	// fetch service
 	let fetch = fetch::Client::new().map_err(|e| format!("Error starting fetch client: {:?}", e))?;
