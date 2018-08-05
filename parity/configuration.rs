@@ -52,6 +52,7 @@ use presale::ImportWallet;
 use account::{AccountCmd, NewAccount, ListAccounts, ImportAccounts, ImportFromGethAccounts};
 use snapshot::{self, SnapshotCommand};
 use network::{IpFilter};
+use hbbft::HbbftConfig;
 
 const DEFAULT_MAX_PEERS: u16 = 50;
 const DEFAULT_MIN_PEERS: u16 = 25;
@@ -335,6 +336,7 @@ impl Configuration {
 			let verifier_settings = self.verifier_settings();
 			let whisper_config = self.whisper_config();
 			let (private_provider_conf, private_enc_conf, private_tx_enabled) = self.private_provider_config()?;
+			let hbbft = self.hbbft_config()?;
 
 			let run_cmd = RunCmd {
 				cache_config: cache_config,
@@ -383,6 +385,7 @@ impl Configuration {
 				no_persistent_txqueue: self.args.flag_no_persistent_txqueue,
 				whisper: whisper_config,
 				no_hardcoded_sync: self.args.flag_no_hardcoded_sync,
+				hbbft,
 			};
 			Cmd::Run(run_cmd)
 		};
@@ -391,6 +394,22 @@ impl Configuration {
 			logger: logger_config,
 			cmd: cmd,
 		})
+	}
+
+	fn hbbft_config(&self) -> Result<HbbftConfig, String> {
+		use std::net::ToSocketAddrs;
+
+		let mut hbbft = HbbftConfig::default();
+		hbbft.bind_address = match self.args.arg_hbbft_bind_address {
+			Some(ref ba) => {
+				ba.to_socket_addrs()
+					.map_err(|err| format!("Invalid hbbft bind address: {:?}", err))?
+					.next()
+					.unwrap_or(hbbft.bind_address)
+			},
+			None => hbbft.bind_address,
+		};
+		Ok(hbbft)
 	}
 
 	fn vm_type(&self) -> Result<VMType, String> {
@@ -1408,6 +1427,7 @@ mod tests {
 			no_hardcoded_sync: false,
 			no_persistent_txqueue: false,
 			whisper: Default::default(),
+			hydrabadger: HydrabadgerConfig::new(),
 		};
 		expected.secretstore_conf.enabled = cfg!(feature = "secretstore");
 		expected.secretstore_conf.http_enabled = cfg!(feature = "secretstore");

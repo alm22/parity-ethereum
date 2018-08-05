@@ -67,7 +67,7 @@ use secretstore;
 use signer;
 use db;
 use ethkey::Password;
-
+use hbbft::HbbftConfig;
 use hydrabadger::Hydrabadger;
 
 // how often to take periodic snapshots.
@@ -132,6 +132,7 @@ pub struct RunCmd {
 	pub no_persistent_txqueue: bool,
 	pub whisper: ::whisper::Config,
 	pub no_hardcoded_sync: bool,
+	pub hbbft: HbbftConfig,
 }
 
 // node info fetcher for the local store.
@@ -478,7 +479,7 @@ fn execute_impl<Cr, Rr>(cmd: RunCmd, logger: Arc<RotatingLogger>, on_client_rq: 
         .next().unwrap();
 
 	// Hydrabadger
-	let hdb = Hydrabadger::with_defaults(hdb_bind_address);
+	let _hdb = Hydrabadger::with_defaults(hdb_bind_address);
 
 	// fetch service
 	let fetch = fetch::Client::new().map_err(|e| format!("Error starting fetch client: {:?}", e))?;
