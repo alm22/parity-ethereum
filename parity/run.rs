@@ -482,7 +482,8 @@ fn execute_impl<Cr, Rr>(cmd: RunCmd, logger: Arc<RotatingLogger>, on_client_rq: 
 	};
 
 	// Hydrabadger node:
-	let _hdb = Hydrabadger::new(cmd.hbbft.bind_address, hdb_config);
+	let hdb = Hydrabadger::new(cmd.hbbft.bind_address, hdb_config);
+	// event_loop.remote().spawn(hdb.node(None, None));
 
 	// fetch service
 	let fetch = fetch::Client::new().map_err(|e| format!("Error starting fetch client: {:?}", e))?;

@@ -1091,7 +1091,8 @@ usage! {
 
 			ARG arg_hbbft_bind_address: (Option<String>) = None, or |c: &Config| c.hbbft.as_ref()?.bind_address.clone(),
 			"--hbbft-bind-address=[HOST:PORT]",
-			"Specifies the local address for the hydrabadger hbbft node to listen on.",
+			"Specifies the local address for the hydrabadger hbbft node to listen on. Overrides port and interface \
+				if specified. Used for testing [Remove me].",
 	}
 }
 
