@@ -17,8 +17,7 @@
 use futures::future::{self, Loop};
 use futures::sync::{mpsc, oneshot};
 use futures::{self, Future, Async, Sink, Stream};
-use hyper::header::{UserAgent, Location, ContentLength, ContentType};
-use hyper::mime::Mime;
+use hyper::header::{self, HeaderMap, HeaderValue};
 use hyper::{self, Method, StatusCode};
 use hyper_rustls;
 use std;
@@ -27,10 +26,9 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::mpsc::RecvTimeoutError;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration};
 use std::{io, fmt};
-use tokio_core::reactor;
-use tokio_timer::{self, Timer};
+use tokio::{self, util::FutureExt};
 use url::{self, Url};
 use bytes::Bytes;
 
@@ -131,7 +129,7 @@ pub trait Fetch: Clone + Send + Sync + 'static {
 }
 
 type TxResponse = oneshot::Sender<Result<Response, Error>>;
-type TxStartup = std::sync::mpsc::SyncSender<Result<(), io::Error>>;
+type TxStartup = std::sync::mpsc::SyncSender<Result<(), tokio::io::Error>>;
 type ChanItem = Option<(Request, Abort, TxResponse)>;
 
 /// An implementation of `Fetch` using a `hyper` client.
@@ -140,9 +138,8 @@ type ChanItem = Option<(Request, Abort, TxResponse)>;
 // not implement `Send` currently.
 #[derive(Debug)]
 pub struct Client {
-	core: mpsc::Sender<ChanItem>,
+	runtime: mpsc::Sender<ChanItem>,
 	refs: Arc<AtomicUsize>,
-	timer: Timer,
 }
 
 // When cloning a client we increment the internal reference counter.
@@ -150,9 +147,8 @@ impl Clone for Client {
 	fn clone(&self) -> Client {
 		self.refs.fetch_add(1, Ordering::SeqCst);
 		Client {
-			core: self.core.clone(),
+			runtime: self.runtime.clone(),
 			refs: self.refs.clone(),
-			timer: self.timer.clone(),
 		}
 	}
 }
@@ -163,7 +159,7 @@ impl Drop for Client {
 	fn drop(&mut self) {
 		if self.refs.fetch_sub(1, Ordering::SeqCst) == 1 {
 			// ignore send error as it means the background thread is gone already
-			let _ = self.core.clone().send(None).wait();
+			let _ = self.runtime.clone().send(None).wait();
 		}
 	}
 }
@@ -193,23 +189,20 @@ impl Client {
 		}
 
 		Ok(Client {
-			core: tx_proto,
+			runtime: tx_proto,
 			refs: Arc::new(AtomicUsize::new(1)),
-			timer: Timer::default(),
 		})
 	}
 
 	fn background_thread(tx_start: TxStartup, rx_proto: mpsc::Receiver<ChanItem>) -> io::Result<thread::JoinHandle<()>> {
 		thread::Builder::new().name("fetch".into()).spawn(move || {
-			let mut core = match reactor::Core::new() {
+			let mut runtime = match tokio::runtime::current_thread::Runtime::new() {
 				Ok(c) => c,
 				Err(e) => return tx_start.send(Err(e)).unwrap_or(())
 			};
 
-			let handle = core.handle();
-			let hyper = hyper::Client::configure()
-				.connector(hyper_rustls::HttpsConnector::new(4, &core.handle()))
-				.build(&core.handle());
+			let hyper = hyper::Client::builder()
+				.build(hyper_rustls::HttpsConnector::new(4));
 
 			let future = rx_proto.take_while(|item| Ok(item.is_some()))
 				.map(|item| item.expect("`take_while` is only passing on channel items != None; qed"))
@@ -241,12 +234,22 @@ impl Client {
 									request2.set_url(next_url);
 									request2
 								} else {
-									Request::new(next_url, Method::Get)
+									Request::new(next_url, Method::GET)
 								};
 								Ok(Loop::Continue((client, request, abort, redirects + 1)))
 							} else {
-								let content_len = resp.headers.get::<ContentLength>().cloned();
-								if content_len.map(|n| *n > abort.max_size() as u64).unwrap_or(false) {
+								let content_len = resp.headers.get(header::CONTENT_LENGTH).cloned();
+								let invalid_content_len = content_len.map(|val| {
+									let val_n = val.to_str()
+										.map_err(|_| ())
+										.and_then(|v| v.parse::<u64>()
+										.map_err(|_| ()));
+									match val_n {
+										Ok(n) => n > abort.max_size() as u64,
+										Err(_) => false,
+									}
+								}).unwrap_or(false);
+								if invalid_content_len {
 									return Err(Error::SizeLimit)
 								}
 								Ok(Loop::Break(resp))
@@ -256,7 +259,7 @@ impl Client {
 					.then(|result| {
 						future::ok(sender.send(result).unwrap_or(()))
 					});
-				handle.spawn(fut);
+				tokio::spawn(fut);
 				trace!(target: "fetch", "waiting for next request ...");
 				future::ok(())
 			});
@@ -264,7 +267,7 @@ impl Client {
 			tx_start.send(Ok(())).unwrap_or(());
 
 			debug!(target: "fetch", "processing requests ...");
-			if let Err(()) = core.run(future) {
+			if let Err(()) = runtime.block_on(future) {
 				error!(target: "fetch", "error while executing future")
 			}
 			debug!(target: "fetch", "fetch background thread finished")
@@ -273,7 +276,7 @@ impl Client {
 }
 
 impl Fetch for Client {
-	type Result = Box<Future<Item=Response, Error=Error> + Send>;
+	type Result = Box<Future<Item=Response, Error=Error> + Send + 'static>;
 
 	fn fetch(&self, request: Request, abort: Abort) -> Self::Result {
 		debug!(target: "fetch", "fetching: {:?}", request.url());
@@ -282,7 +285,7 @@ impl Fetch for Client {
 		}
 		let (tx_res, rx_res) = oneshot::channel();
 		let maxdur = abort.max_duration();
-		let sender = self.core.clone();
+		let sender = self.runtime.clone();
 		let future = sender.send(Some((request, abort, tx_res)))
 			.map_err(|e| {
 				error!(target: "fetch", "failed to schedule request: {}", e);
@@ -291,7 +294,7 @@ impl Fetch for Client {
 			.and_then(|_| rx_res.map_err(|oneshot::Canceled| Error::BackgroundThreadDead))
 			.and_then(future::result);
 
-		Box::new(self.timer.timeout(future, maxdur))
+		Box::new(future.timeout(maxdur).from_err())
 	}
 
 	/// Get content from some URL.
@@ -315,22 +318,21 @@ impl Fetch for Client {
 
 // Extract redirect location from response. The second return value indicate whether the original method should be preserved.
 fn redirect_location(u: Url, r: &Response) -> Option<(Url, bool)> {
-	use hyper::StatusCode::*;
 	let preserve_method = match r.status() {
-		TemporaryRedirect | PermanentRedirect => true,
+		StatusCode::TEMPORARY_REDIRECT | StatusCode::PERMANENT_REDIRECT => true,
 		_ => false,
 	};
 	match r.status() {
-		MovedPermanently
-		| PermanentRedirect
-		| TemporaryRedirect
-		| Found
-		| SeeOther => {
-			if let Some(loc) = r.headers.get::<Location>() {
-				u.join(loc).ok().map(|url| (url, preserve_method))
-			} else {
-				None
-			}
+		StatusCode::MOVED_PERMANENTLY
+		| StatusCode::PERMANENT_REDIRECT
+		| StatusCode::TEMPORARY_REDIRECT
+		| StatusCode::FOUND
+		| StatusCode::SEE_OTHER => {
+			r.headers.get(header::LOCATION).and_then(|loc| {
+				loc.to_str().ok().and_then(|loc_s| {
+					u.join(loc_s).ok().map(|url| (url, preserve_method))
+				})
+			})
 		}
 		_ => None
 	}
@@ -341,7 +343,7 @@ fn redirect_location(u: Url, r: &Response) -> Option<(Url, bool)> {
 pub struct Request {
 	url: Url,
 	method: Method,
-	headers: hyper::Headers,
+	headers: HeaderMap,
 	body: Bytes,
 }
 
@@ -350,19 +352,19 @@ impl Request {
 	pub fn new(url: Url, method: Method) -> Request {
 		Request {
 			url, method,
-			headers: hyper::Headers::new(),
+			headers: HeaderMap::new(),
 			body: Default::default(),
 		}
 	}
 
 	/// Create a new GET request.
 	pub fn get(url: Url) -> Request {
-		Request::new(url, Method::Get)
+		Request::new(url, Method::GET)
 	}
 
 	/// Create a new empty POST request.
 	pub fn post(url: Url) -> Request {
-		Request::new(url, Method::Post)
+		Request::new(url, Method::POST)
 	}
 
 	/// Read the url.
@@ -371,12 +373,12 @@ impl Request {
 	}
 
 	/// Read the request headers.
-	pub fn headers(&self) -> &hyper::Headers {
+	pub fn headers(&self) -> &HeaderMap {
 		&self.headers
 	}
 
 	/// Get a mutable reference to the headers.
-	pub fn headers_mut(&mut self) -> &mut hyper::Headers {
+	pub fn headers_mut(&mut self) -> &mut HeaderMap {
 		&mut self.headers
 	}
 
@@ -391,8 +393,8 @@ impl Request {
 	}
 
 	/// Consume self, and return it with the added given header.
-	pub fn with_header<H: hyper::header::Header>(mut self, value: H) -> Self {
-		self.headers_mut().set(value);
+	pub fn with_header(mut self, value: HeaderMap) -> Self {
+		self.headers_mut().extend(value);
 		self
 	}
 
@@ -403,16 +405,15 @@ impl Request {
 	}
 }
 
-impl Into<hyper::Request> for Request {
-	fn into(mut self) -> hyper::Request {
-		let uri = self.url.as_ref().parse().expect("Every valid URLis also a URI.");
-		let mut req = hyper::Request::new(self.method, uri);
-
-		self.headers.set(UserAgent::new("Parity Fetch Neo"));
-		*req.headers_mut() = self.headers;
-		req.set_body(self.body);
-
-		req
+impl Into<hyper::Request<hyper::Body>> for Request {
+	fn into(self) -> hyper::Request<hyper::Body> {
+		let uri: hyper::Uri = self.url.as_ref().parse().expect("Every valid URLis also a URI.");
+		hyper::Request::builder()
+			.method(self.method)
+			.uri(uri)
+			.header(header::USER_AGENT, HeaderValue::from_static("Parity Fetch Neo"))
+			.body(self.body.into())
+			.expect("Header, uri, method, and body are already valid and can not fail to parse; qed")
 	}
 }
 
@@ -421,7 +422,7 @@ impl Into<hyper::Request> for Request {
 pub struct Response {
 	url: Url,
 	status: StatusCode,
-	headers: hyper::Headers,
+	headers: HeaderMap,
 	body: hyper::Body,
 	abort: Abort,
 	nread: usize,
@@ -429,12 +430,12 @@ pub struct Response {
 
 impl Response {
 	/// Create a new response, wrapping a hyper response.
-	pub fn new(u: Url, r: hyper::Response, a: Abort) -> Response {
+	pub fn new(u: Url, r: hyper::Response<hyper::Body>, a: Abort) -> Response {
 		Response {
 			url: u,
 			status: r.status(),
 			headers: r.headers().clone(),
-			body: r.body(),
+			body: r.into_body(),
 			abort: a,
 			nread: 0,
 		}
@@ -447,26 +448,26 @@ impl Response {
 
 	/// Status code == OK (200)?
 	pub fn is_success(&self) -> bool {
-		self.status() == StatusCode::Ok
+		self.status() == StatusCode::OK
 	}
 
 	/// Status code == 404.
 	pub fn is_not_found(&self) -> bool {
-		self.status() == StatusCode::NotFound
+		self.status() == StatusCode::NOT_FOUND
 	}
 
 	/// Is the content-type text/html?
 	pub fn is_html(&self) -> bool {
-		if let Some(ref mime) = self.content_type() {
-			mime.type_() == "text" && mime.subtype() == "html"
-		} else {
-			false
-		}
+		self.content_type().and_then(|ct_val| {
+			ct_val.to_str().ok().map(|ct_str| {
+				ct_str.contains("text") && ct_str.contains("html")
+			})
+		}).unwrap_or(false)
 	}
 
-	/// The conten-type header value.
-	pub fn content_type(&self) -> Option<Mime> {
-		self.headers.get::<ContentType>().map(|ct| ct.0.clone())
+	/// The content-type header value.
+	pub fn content_type(&self) -> Option<HeaderValue> {
+		self.headers.get(header::CONTENT_TYPE).map(|ct| ct.clone())
 	}
 }
 
@@ -570,8 +571,10 @@ pub enum Error {
 	Aborted,
 	/// Too many redirects have been encountered.
 	TooManyRedirects,
+	/// tokio-timer inner future gave us an error.
+	TokioTimerInner,
 	/// tokio-timer gave us an error.
-	Timer(tokio_timer::TimerError),
+	TokioTimer,
 	/// The maximum duration was reached.
 	Timeout,
 	/// The response body is too large.
@@ -589,7 +592,8 @@ impl fmt::Display for Error {
 			Error::Io(ref e) => write!(fmt, "{}", e),
 			Error::BackgroundThreadDead => write!(fmt, "background thread gond"),
 			Error::TooManyRedirects => write!(fmt, "too many redirects"),
-			Error::Timer(ref e) => write!(fmt, "{}", e),
+			Error::TokioTimerInner => write!(fmt, "tokio timer inner value error"),
+			Error::TokioTimer => write!(fmt, "tokio timer error"),
 			Error::Timeout => write!(fmt, "request timed out"),
 			Error::SizeLimit => write!(fmt, "size limit reached"),
 		}
@@ -614,11 +618,14 @@ impl From<url::ParseError> for Error {
 	}
 }
 
-impl<F> From<tokio_timer::TimeoutError<F>> for Error {
-	fn from(e: tokio_timer::TimeoutError<F>) -> Self {
-		match e {
-			tokio_timer::TimeoutError::Timer(_, e) => Error::Timer(e),
-			tokio_timer::TimeoutError::TimedOut(_) => Error::Timeout,
+impl<T> From<tokio::timer::timeout::Error<T>> for Error where T:  {
+	fn from(e: tokio::timer::timeout::Error<T>) -> Self {
+		if e.is_inner() {
+			Error::TokioTimerInner
+		} else if e.is_elapsed() {
+			Error::Timeout
+		} else {
+			Error::TokioTimer
 		}
 	}
 }
@@ -630,7 +637,7 @@ mod test {
 	use futures::sync::mpsc;
 	use hyper::StatusCode;
 	use hyper::server::{Http, Request, Response, Service};
-	use tokio_timer::Timer;
+	use tokio::timer::Timeout;
 	use std;
 	use std::io::Read;
 	use std::net::SocketAddr;
@@ -727,7 +734,7 @@ mod test {
 		}
 	}
 
-	struct TestServer(Timer);
+	struct TestServer(Timeout<()>);
 
 	impl Service for TestServer {
 		type Request = Request;
