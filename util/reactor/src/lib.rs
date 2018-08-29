@@ -30,7 +30,7 @@ pub use tokio::runtime::{Runtime, TaskExecutor};
 ///
 /// Runs in a separate thread.
 pub struct EventLoop {
-	executor: Executor,
+	remote: Remote,
 	handle: EventLoopHandle,
 }
 
@@ -45,11 +45,11 @@ impl EventLoop {
 			runtime.spawn(futures::empty().select(stopped).map(|_| ()).map_err(|_| ()));
 			runtime.shutdown_on_idle().wait().expect("Tokio runtime shutdown should not fail.");
 		});
-		let executor = rx.recv().expect("tx is transfered to a newly spawned thread.");
+		let remote = rx.recv().expect("tx is transfered to a newly spawned thread.");
 
 		EventLoop {
-			executor: Executor {
-				inner: Mode::Tokio(executor),
+			remote: Remote {
+				inner: Mode::Tokio(remote),
 			},
 			handle: EventLoopHandle {
 				close: Some(stop),
@@ -62,16 +62,16 @@ impl EventLoop {
 	///
 	/// Deprecated: Exists only to connect with current JSONRPC implementation.
 	pub fn raw_executor(&self) -> TaskExecutor {
-		if let Mode::Tokio(ref executor) = self.executor.inner {
+		if let Mode::Tokio(ref executor) = self.remote.inner {
 			executor.clone()
 		} else {
 			panic!("Event loop is never initialized in other mode then Tokio.")
 		}
 	}
 
-	/// Returns event loop executor.
-	pub fn executor(&self) -> Executor {
-		self.executor.clone()
+	/// Returns event loop remote.
+	pub fn remote(&self) -> Remote {
+		self.remote.clone()
 	}
 }
 
@@ -114,30 +114,30 @@ where
 }
 
 #[derive(Debug, Clone)]
-pub struct Executor {
+pub struct Remote {
 	inner: Mode,
 }
 
-impl Executor {
-	/// Executor for existing event loop.
+impl Remote {
+	/// Remote for existing event loop.
 	///
 	/// Deprecated: Exists only to connect with current JSONRPC implementation.
-	pub fn new(executor: TaskExecutor) -> Self {
-		Executor {
-			inner: Mode::Tokio(executor),
+	pub fn new(remote: TaskExecutor) -> Self {
+		Remote {
+			inner: Mode::Tokio(remote),
 		}
 	}
 
-	/// Synchronous executor, used mostly for tests.
+	/// Synchronous remote, used mostly for tests.
 	pub fn new_sync() -> Self {
-		Executor {
+		Remote {
 			inner: Mode::Sync,
 		}
 	}
 
 	/// Spawns a new thread for each future (use only for tests).
 	pub fn new_thread_per_future() -> Self {
-		Executor {
+		Remote {
 			inner: Mode::ThreadPerFuture,
 		}
 	}
@@ -148,7 +148,7 @@ impl Executor {
         R::Future: Send + 'static,
 	{
 		match self.inner {
-			Mode::Tokio(ref executor) => executor.spawn(r.into_future()),
+			Mode::Tokio(ref remote) => remote.spawn(r.into_future()),
 			Mode::Sync => {
 				let _= r.into_future().wait();
 			},
@@ -167,7 +167,7 @@ impl Executor {
         R::Future: Send + 'static,
 	{
 		match self.inner {
-			Mode::Tokio(ref executor) => executor.spawn(future::lazy(f)),
+			Mode::Tokio(ref remote) => remote.spawn(future::lazy(f)),
 			Mode::Sync => {
 				let _ = future::lazy(f).wait();
 			},
@@ -187,8 +187,8 @@ impl Executor {
 		R::Future: Send + 'static,
 	{
 		match self.inner {
-			Mode::Tokio(ref executor) => {
-				executor.spawn(timeout(f, duration, on_timeout))
+			Mode::Tokio(ref remote) => {
+				remote.spawn(timeout(f, duration, on_timeout))
 			},
 			Mode::Sync => {
 				let _ = timeout(f, duration, on_timeout).wait();
