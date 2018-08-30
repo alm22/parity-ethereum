@@ -20,7 +20,7 @@ hashdb = { git = "https://github.com/paritytech/parity-common" }
 memorydb = { git = "https://github.com/paritytech/parity-common" }
 patricia-trie = { git = "https://github.com/paritytech/parity-common" }
 patricia-trie-ethereum = { path = "../util/patricia-trie-ethereum" }
-parity-crypto = { git = "https://github.com/paritytech/parity-common" }
+parity-crypto = { git = "https://github.com/c0gent/parity-common" }
 error-chain = { version = "0.12", default-features = false }
 ethcore-io = { path = "../util/io" }
 ethcore-logger = { path = "../logger" }
