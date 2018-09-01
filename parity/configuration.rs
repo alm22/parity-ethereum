@@ -1427,7 +1427,7 @@ mod tests {
 			no_hardcoded_sync: false,
 			no_persistent_txqueue: false,
 			whisper: Default::default(),
-			hydrabadger: HydrabadgerConfig::new(),
+			hbbft: HbbftConfig::default(),
 		};
 		expected.secretstore_conf.enabled = cfg!(feature = "secretstore");
 		expected.secretstore_conf.http_enabled = cfg!(feature = "secretstore");

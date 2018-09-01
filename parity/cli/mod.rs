@@ -1097,14 +1097,6 @@ usage! {
 
 #[derive(Default, Debug, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Hbbft {
-	port: Option<u16>,
-	interface: Option<String>,
-	bind_address: Option<String>,
-}
-
-#[derive(Default, Debug, PartialEq, Deserialize)]
-#[serde(deny_unknown_fields)]
 struct Config {
 	parity: Option<Operating>,
 	account: Option<Account>,
@@ -1388,12 +1380,20 @@ struct Whisper {
 	pool_size: Option<usize>,
 }
 
+#[derive(Default, Debug, PartialEq, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Hbbft {
+	port: Option<u16>,
+	interface: Option<String>,
+	bind_address: Option<String>,
+}
+
 #[cfg(test)]
 mod tests {
 	use super::{
 		Args, ArgsError,
 		Config, Operating, Account, Ui, Network, Ws, Rpc, Ipc, Dapps, Ipfs, Mining, Footprint,
-		Snapshots, Misc, Whisper, SecretStore,
+		Snapshots, Misc, Whisper, SecretStore, Hbbft,
 	};
 	use toml;
 	use clap::{ErrorKind as ClapErrorKind};
@@ -1847,6 +1847,10 @@ mod tests {
 			arg_log_file: Some("/var/log/parity.log".into()),
 			flag_no_color: false,
 			flag_no_config: false,
+
+			arg_hbbft_port: Some(5910),
+			arg_hbbft_interface: "local".into(),
+			arg_hbbft_bind_address: None,
 		});
 	}
 
@@ -2058,6 +2062,11 @@ mod tests {
 				pool_size: Some(50),
 			}),
 			stratum: None,
+			hbbft: Some(Hbbft {
+				port: Some(5910),
+				interface: Some("local".into()),
+				bind_address: None,
+			})
 		});
 	}
 
