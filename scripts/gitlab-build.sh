@@ -241,12 +241,11 @@ case $BUILD_PLATFORM in
     echo "Check build ref name"
     if [[ "$CI_BUILD_REF_NAME" = "stable" || "$CI_BUILD_REF_NAME" = "beta" || "$VER" == *1.11* || "$VER" == *2.0* ]];
       then
-       echo "Build is stable"
         sed -i -e 's/grade: devel/grade: stable/' snap/snapcraft.yaml;
     fi
     echo "Move snapcraft.yaml"
     mv -f snap/snapcraft.yaml snapcraft.yaml
-    echo "Delete snapcraft.yaml"
+    echo "snapcraft -d"
     snapcraft -d
     echo "Login to snapcraft:"
     snapcraft_login=$(expect -c "
