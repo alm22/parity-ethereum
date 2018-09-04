@@ -214,25 +214,23 @@ test-coverage:
   stage: test
   only:
   - master
-  - natlg-build-test
   script:
   - scripts/gitlab-test.sh test-coverage
   tags:
   - kcov
   allow_failure: true
-#test-rust-stable:
-#  stage: test
-#  image: parity/rust:gitlab-ci
-#  script:
-#  - scripts/gitlab-test.sh stable
-#  tags:
-#  - rust-stable
+test-rust-stable:
+  stage: test
+  image: parity/rust:gitlab-ci
+  script:
+  - scripts/gitlab-test.sh stable
+  tags:
+  - rust-stable
 test-rust-beta:
   stage: test
   only:
-#  - triggers
+  - triggers
   - master
-  - natlg-build-test
   image: parity/rust:gitlab-ci
   script:
   - scripts/gitlab-test.sh beta
@@ -242,9 +240,8 @@ test-rust-beta:
 test-rust-nightly:
   stage: test
   only:
-#  - triggers
+  - triggers
   - master
-  - natlg-build-test
   image: parity/rust:gitlab-ci
   script:
   - scripts/gitlab-test.sh nightly
@@ -256,7 +253,7 @@ push-release:
   stage: push-release
   only:
   - tags
-#  - triggers
+  - triggers
   image: parity/rust:gitlab-ci
   script:
   - scripts/gitlab-push-release.sh
