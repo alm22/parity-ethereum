@@ -245,6 +245,7 @@ impl OperationsClient for OperationsContractClient {
 
 		let client = self.client.upgrade().ok_or_else(|| "Cannot obtain client")?;
 		let address = client.registry_address("operations".into(), BlockId::Latest).ok_or_else(|| "Cannot get operations contract address")?;
+		info!(target: "updater", "operations address: {:?}", address);
 		let do_call = |data| client.call_contract(BlockId::Latest, address, data).map_err(|e| format!("{:?}", e));
 
 		trace!(target: "updater", "Looking up this_fork for our release: {}/{:?}", CLIENT_ID, this.hash);
@@ -264,6 +265,7 @@ impl OperationsClient for OperationsContractClient {
 
 		// get the hash of the latest release in our track
 		let latest_in_track = self.latest_hash(track, &do_call)?;
+		info!(target: "updater", "latest in track: {:?}", latest_in_track);
 
 		// get the release info for the latest version in track
 		let in_track = self.release_info(latest_in_track, &do_call)?;
@@ -518,7 +520,7 @@ impl<O: OperationsClient, F: HashFetch, T: TimeProvider, R: GenRange> Updater<O,
 					fetch::Abort::default().with_max_size(self.update_policy.max_size),
 					Box::new(f));
 			};
-
+			info!(target: "updater", "state status: {:?}", state.status);
 			match state.status.clone() {
 				// updater is disabled
 				UpdaterStatus::Disabled => {},
@@ -561,11 +563,13 @@ impl<O: OperationsClient, F: HashFetch, T: TimeProvider, R: GenRange> Updater<O,
 				// release is pushed we'll fall through to the default case.
 				_ => {
 					if let Some(binary) = latest.track.binary {
+						info!(target: "updater", "binary = latest.track.binary  ");
 						let running_later = latest.track.version.version < self.version_info().version;
 						let running_latest = latest.track.version.hash == self.version_info().hash;
 
 						// Bail out if we're already running the latest version or a later one
 						if running_later || running_latest {
+							info!(target: "updater", "already running the latest version or a later one");
 							return;
 						}
 
@@ -602,7 +606,7 @@ impl<O: OperationsClient, F: HashFetch, T: TimeProvider, R: GenRange> Updater<O,
 							}
 						}
 					}
-				},
+				}
 			}
 		}
 	}
@@ -613,8 +617,9 @@ impl<O: OperationsClient, F: HashFetch, T: TimeProvider, R: GenRange> Updater<O,
 		// We rely on a secure state. Bail if we're unsure about it.
 		if !cfg!(feature = "test-updater") {
 			if self.client.upgrade().map_or(true, |c| !c.chain_info().security_level().is_full()) {
-			    return;
-			}
+				info!(target: "updater", "!!! secure state didn't match, suppoused to return");
+				//return;
+			} else { info!(target: "updater", "!!! secure state match"); }
 		}
 
 		// Only check for updates every n blocks
@@ -622,6 +627,7 @@ impl<O: OperationsClient, F: HashFetch, T: TimeProvider, R: GenRange> Updater<O,
 
 		if !cfg!(feature = "test-updater") {
 			if current_block_number % cmp::max(self.update_policy.frequency, 1) != 0 {
+				info!(target: "updater", "too soon, so return");
 				return;
 			}
 		}
@@ -630,7 +636,7 @@ impl<O: OperationsClient, F: HashFetch, T: TimeProvider, R: GenRange> Updater<O,
 
 		// Get the latest available release
 		let latest = self.operations_client.latest(&self.this, self.track()).ok();
-
+		info!(target: "updater", "latest release from operations: {:?}", latest);
 		if let Some(latest) = latest {
 			// Update current capability
 			state.capability = match latest.this_fork {
@@ -698,6 +704,7 @@ impl<O: OperationsClient, F: HashFetch, T: TimeProvider, R: GenRange> Service fo
 	}
 
 	fn execute_upgrade(&self) -> bool {
+		info!(target: "updater", "execute_upgrade()");
 		let state = self.state.lock();
 		self.execute_upgrade(state)
 	}
