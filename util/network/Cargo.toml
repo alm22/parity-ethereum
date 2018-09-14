@@ -8,7 +8,7 @@ authors = ["Parity Technologies <admin@parity.io>"]
 
 [dependencies]
 error-chain = { version = "0.12", default-features = false }
-parity-crypto = "0.1"
+parity-crypto = { git = "https://github.com/c0gent/parity-common", branch = "ring-0.13" }
 ethcore-io = { path = "../io" }
 ethereum-types = "0.4"
 ethkey = { path = "../../ethkey" }

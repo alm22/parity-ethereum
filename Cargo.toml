@@ -139,4 +139,7 @@ members = [
 ]
 
 [patch.crates-io]
-ring = { git = "https://github.com/paritytech/ring" }
+# ring = { git = "https://github.com/paritytech/ring" }
+ring = { git = "https://github.com/briansmith/ring" }
+parity-crypto = { git = "https://github.com/c0gent/parity-common", branch = "ring-0.13" }
+cid = { git = "https://github.com/c0gent/rust-cid", branch = "bump-multihash" }

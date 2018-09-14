@@ -25,7 +25,7 @@ tokio-proto = "0.1"
 url = "1.0"
 ethcore = { path = "../ethcore" }
 parity-bytes = "0.1"
-parity-crypto = "0.1"
+parity-crypto = { git = "https://github.com/c0gent/parity-common", branch = "ring-0.13" }
 ethcore-logger = { path = "../logger" }
 ethcore-sync = { path = "../ethcore/sync" }
 ethcore-transaction = { path = "../ethcore/transaction" }

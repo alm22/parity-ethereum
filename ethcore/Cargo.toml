@@ -20,7 +20,7 @@ hashdb = "0.2.1"
 memorydb = "0.2.1"
 patricia-trie = "0.2"
 patricia-trie-ethereum = { path = "../util/patricia-trie-ethereum" }
-parity-crypto = "0.1"
+parity-crypto = { git = "https://github.com/c0gent/parity-common", branch = "ring-0.13" }
 error-chain = { version = "0.12", default-features = false }
 ethcore-io = { path = "../util/io" }
 ethcore-logger = { path = "../logger" }

@@ -12,7 +12,7 @@ ethabi-derive = "6.0"
 ethabi-contract = "6.0"
 ethcore = { path = ".." }
 parity-bytes = "0.1"
-parity-crypto = "0.1"
+parity-crypto = { git = "https://github.com/c0gent/parity-common", branch = "ring-0.13" }
 ethcore-io = { path = "../../util/io" }
 ethcore-logger = { path = "../../logger" }
 ethcore-miner = { path = "../../miner" }
