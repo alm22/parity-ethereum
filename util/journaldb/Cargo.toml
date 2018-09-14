@@ -6,19 +6,19 @@ description = "A `HashDB` which can manage a short-term journal potentially cont
 license = "GPL3"
 
 [dependencies]
-parity-bytes = { git = "https://github.com/paritytech/parity-common" }
+parity-bytes = { git = "https://github.com/c0gent/parity-common", branch = "ring-0.13" }
 ethereum-types = "0.3"
-hashdb = { git = "https://github.com/paritytech/parity-common" }
+hashdb = { git = "https://github.com/c0gent/parity-common", branch = "ring-0.13" }
 heapsize = "0.4"
 keccak-hasher = { path = "../keccak-hasher" }
-kvdb = { git = "https://github.com/paritytech/parity-common" }
+kvdb = { git = "https://github.com/c0gent/parity-common", branch = "ring-0.13" }
 log = "0.4"
-memorydb = { git = "https://github.com/paritytech/parity-common" }
+memorydb = { git = "https://github.com/c0gent/parity-common", branch = "ring-0.13" }
 parking_lot = "0.6"
 fastmap = { path = "../../util/fastmap" }
-rlp = { git = "https://github.com/paritytech/parity-common" }
+rlp = { git = "https://github.com/c0gent/parity-common", branch = "ring-0.13" }
 
 [dev-dependencies]
 ethcore-logger = { path = "../../logger" }
-keccak-hash = { git = "https://github.com/paritytech/parity-common" }
-kvdb-memorydb = { git = "https://github.com/paritytech/parity-common" }
+keccak-hash = { git = "https://github.com/c0gent/parity-common", branch = "ring-0.13" }
+kvdb-memorydb = { git = "https://github.com/c0gent/parity-common", branch = "ring-0.13" }

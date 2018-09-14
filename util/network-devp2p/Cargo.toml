@@ -20,16 +20,16 @@ parking_lot = "0.6"
 ansi_term = "0.10"
 rustc-hex = "1.0"
 ethcore-io = { path = "../io", features = ["mio"] }
-parity-bytes = { git = "https://github.com/paritytech/parity-common" }
-parity-crypto = { git = "https://github.com/c0gent/parity-common" }
+parity-bytes = { git = "https://github.com/c0gent/parity-common", branch = "ring-0.13" }
+parity-crypto = { git = "https://github.com/c0gent/parity-common", branch = "ring-0.13" }
 ethcore-logger = { path ="../../logger" }
 ethcore-network = { path = "../network" }
 ethereum-types = "0.3"
 ethkey = { path = "../../ethkey" }
-rlp = { git = "https://github.com/paritytech/parity-common" }
-path = { git = "https://github.com/paritytech/parity-common" }
+rlp = { git = "https://github.com/c0gent/parity-common", branch = "ring-0.13" }
+path = { git = "https://github.com/c0gent/parity-common" }
 ipnetwork = "0.12.6"
-keccak-hash = { git = "https://github.com/paritytech/parity-common" }
+keccak-hash = { git = "https://github.com/c0gent/parity-common", branch = "ring-0.13" }
 snappy = { git = "https://github.com/paritytech/rust-snappy" }
 serde = "1.0"
 serde_json = "1.0"

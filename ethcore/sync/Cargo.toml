@@ -9,7 +9,7 @@ authors = ["Parity Technologies <admin@parity.io>"]
 
 [dependencies]
 common-types = { path = "../types" }
-parity-bytes = { git = "https://github.com/paritytech/parity-common" }
+parity-bytes = { git = "https://github.com/c0gent/parity-common", branch = "ring-0.13" }
 ethcore-network = { path = "../../util/network" }
 ethcore-network-devp2p = { path = "../../util/network-devp2p" }
 ethcore-io = { path = "../../util/io" }
@@ -17,14 +17,14 @@ ethcore-light = { path = "../light" }
 ethcore-transaction = { path = "../transaction" }
 ethcore = { path = ".." }
 ethereum-types = "0.3"
-hashdb = { git = "https://github.com/paritytech/parity-common" }
+hashdb = { git = "https://github.com/c0gent/parity-common", branch = "ring-0.13" }
 fastmap = { path = "../../util/fastmap" }
-rlp = { git = "https://github.com/paritytech/parity-common" }
+rlp = { git = "https://github.com/c0gent/parity-common", branch = "ring-0.13" }
 rustc-hex = "1.0"
-keccak-hash = { git = "https://github.com/paritytech/parity-common" }
+keccak-hash = { git = "https://github.com/c0gent/parity-common", branch = "ring-0.13" }
 keccak-hasher = { path = "../../util/keccak-hasher" }
 triehash-ethereum = {version = "0.2", path = "../../util/triehash-ethereum" }
-kvdb = { git = "https://github.com/paritytech/parity-common" }
+kvdb = { git = "https://github.com/c0gent/parity-common", branch = "ring-0.13" }
 macros = { path = "../../util/macros" }
 log = "0.4"
 env_logger = "0.5"
@@ -39,6 +39,6 @@ ipnetwork = "0.12.6"
 [dev-dependencies]
 ethcore-io = { path = "../../util/io", features = ["mio"] }
 ethkey = { path = "../../ethkey" }
-kvdb-memorydb = { git = "https://github.com/paritytech/parity-common" }
+kvdb-memorydb = { git = "https://github.com/c0gent/parity-common", branch = "ring-0.13" }
 ethcore-private-tx = { path = "../private-tx" }
 ethcore = { path = "..", features = ["test-helpers"] }

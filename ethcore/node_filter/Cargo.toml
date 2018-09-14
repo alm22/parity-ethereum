@@ -20,6 +20,6 @@ lru-cache = "0.1"
 
 [dev-dependencies]
 ethcore = { path = "..", features = ["test-helpers"] }
-kvdb-memorydb = { git = "https://github.com/paritytech/parity-common" }
+kvdb-memorydb = { git = "https://github.com/c0gent/parity-common", branch = "ring-0.13" }
 ethcore-io = { path = "../../util/io" }
 tempdir = "0.3"
