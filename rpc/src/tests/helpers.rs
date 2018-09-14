@@ -35,7 +35,7 @@ impl<T> Server<T> {
 		F: FnOnce(TaskExecutor) -> T,
 	{
 		let event_loop = EventLoop::spawn();
-		let remote = event_loop.raw_remote();
+		let remote = event_loop.raw_executor();
 
 		Server {
 			server: f(remote),

@@ -124,7 +124,7 @@ pub use authcodes::{AuthCodes, TimeProvider};
 pub use http_common::HttpMetaExtractor;
 
 use std::net::SocketAddr;
-use http::tokio_core;
+use http::tokio;
 
 /// RPC HTTP Server instance
 pub type HttpServer = http::Server;

@@ -17,7 +17,7 @@
 use futures::future::{self, Loop};
 use futures::sync::{mpsc, oneshot};
 use futures::{self, Future, Async, Sink, Stream};
-use hyper::header::{self, HeaderMap, HeaderValue};
+use hyper::header::{self, HeaderMap, HeaderValue, IntoHeaderName};
 use hyper::{self, Method, StatusCode};
 use hyper_rustls;
 use std;
@@ -393,8 +393,10 @@ impl Request {
 	}
 
 	/// Consume self, and return it with the added given header.
-	pub fn with_header(mut self, value: HeaderMap) -> Self {
-		self.headers_mut().extend(value);
+	pub fn with_header<K>(mut self, key: K, val: HeaderValue) -> Self
+		where K: IntoHeaderName,
+	{
+		self.headers_mut().append(key, val);
 		self
 	}
 

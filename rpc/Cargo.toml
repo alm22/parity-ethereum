@@ -28,17 +28,16 @@ tokio-timer = "0.1"
 transient-hashmap = "0.4"
 itertools = "0.5"
 
-jsonrpc-core = { git = "https://github.com/paritytech/jsonrpc.git", branch = "parity-1.11" }
-jsonrpc-http-server = { git = "https://github.com/paritytech/jsonrpc.git", branch = "parity-1.11" }
-jsonrpc-ws-server = { git = "https://github.com/paritytech/jsonrpc.git", branch = "parity-1.11" }
-jsonrpc-ipc-server = { git = "https://github.com/paritytech/jsonrpc.git", branch = "parity-1.11" }
-jsonrpc-macros = { git = "https://github.com/paritytech/jsonrpc.git", branch = "parity-1.11" }
-jsonrpc-pubsub = { git = "https://github.com/paritytech/jsonrpc.git", branch = "parity-1.11" }
+jsonrpc-core = { git = "https://github.com/c0gent/jsonrpc.git", branch = "c0gent-hyper" }
+jsonrpc-http-server = { git = "https://github.com/c0gent/jsonrpc.git", branch = "c0gent-hyper" }
+jsonrpc-ws-server = { git = "https://github.com/c0gent/jsonrpc.git", branch = "c0gent-hyper" }
+jsonrpc-ipc-server = { git = "https://github.com/c0gent/jsonrpc.git", branch = "c0gent-hyper" }
+jsonrpc-macros = { git = "https://github.com/c0gent/jsonrpc.git", branch = "c0gent-hyper" }
+jsonrpc-pubsub = { git = "https://github.com/c0gent/jsonrpc.git", branch = "c0gent-hyper" }
 
 ethash = { path = "../ethash" }
 ethcore = { path = "../ethcore", features = ["test-helpers"] }
 parity-bytes = "0.1"
-# parity-crypto = { git = "https://github.com/c0gent/parity-common", branch = "ring-0.13" }
 parity-crypto = { git = "https://github.com/c0gent/parity-common", branch = "ring-0.13" }
 fastmap = { path = "../util/fastmap" }
 ethcore-devtools = { path = "../devtools" }
